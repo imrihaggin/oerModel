@@ -1,0 +1,128 @@
+project:
+  raw_dir: data/raw
+  interim_dir: data/interim
+  processed_dir: data/processed
+  artifacts_dir: artifacts
+  models_dir: models
+  dashboards_dir: dashboards
+
+data:
+  start_date: "2010-01-01"
+  end_date: null
+  fred:
+    enabled: true
+    series:
+      - series_id: CUSR0000SEHC01
+        alias: oer_cpi
+      - series_id: UNRATE
+        alias: unemployment_rate
+      - series_id: CES0500000003
+        alias: average_hourly_earnings
+      - series_id: CIU2010000000000I
+        alias: employment_cost_index
+  bloomberg:
+    enabled: false
+    series: []
+  manual:
+    datasets:
+      - path: data/external/zori.csv
+        rename:
+          Value: zori_index
+        drop: []
+      - path: data/external/zhvi.csv
+        rename:
+          Value: zhvi_index
+        drop: []
+
+features:
+  target_column: oer_cpi_yoy
+  drop_na: true
+  recipes:
+    - source: oer_cpi
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: oer_cpi_yoy
+      set_as_target: true
+    - source: zori_index
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: zori_yoy
+        - type: lag
+          periods: 12
+          alias: zori_yoy_lag12
+    - source: zhvi_index
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: zhvi_yoy
+        - type: lag
+          periods: 16
+          alias: zhvi_yoy_lag16
+    - source: unemployment_rate
+      operations:
+        - type: lag
+          periods: 3
+          alias: unemployment_rate_lag3
+    - source: average_hourly_earnings
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: ahe_yoy
+    - source: employment_cost_index
+      operations:
+        - type: pct_change
+          periods: 4
+          alias: eci_yoy
+
+backtest:
+  train_window: 120
+  test_window: 6
+  step: 3
+
+models:
+  candidates:
+    lasso:
+      enabled: true
+      deploy: true
+      class: oer_model.models.baselines.LassoModel
+      params:
+        name: lasso
+        cv: 5
+        max_iter: 5000
+    var:
+      enabled: true
+      deploy: false
+      class: oer_model.models.baselines.VARModel
+      params:
+        name: var
+        params:
+          lags: 6
+    xgboost:
+      enabled: true
+      deploy: true
+      class: oer_model.models.xgboost.XGBoostModel
+      params:
+        name: xgboost
+        params:
+          n_estimators: 600
+          learning_rate: 0.05
+          max_depth: 4
+          subsample: 0.9
+          colsample_bytree: 0.9
+    tft:
+      enabled: false
+      deploy: false
+      class: oer_model.models.tft.TemporalFusionTransformerModel
+      params:
+        name: tft
+        params:
+          max_encoder_length: 18
+          max_prediction_length: 6
+          hidden_size: 32
+          attention_head_size: 4
+          dropout: 0.1
+          learning_rate: 0.001
+          max_epochs: 50
+          accelerator: cpu

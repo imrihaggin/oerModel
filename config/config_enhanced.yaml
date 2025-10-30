@@ -1,0 +1,409 @@
+# Enhanced OER Forecasting Project Configuration
+#
+# This configuration supports:
+# - Panel-aware feature engineering (6-panel BLS survey structure)
+# - Hierarchical CPI modeling
+# - Advanced interpretability (TFT attention, variable importance)
+# - Bloomberg Terminal (BQNT) integration
+
+project:
+  name: oer_forecasting
+  version: "2.0.0"
+  description: "Advanced ML/DL forecasting for Owners' Equivalent Rent"
+  
+  # Directory structure
+  raw_dir: data/raw
+  interim_dir: data/interim
+  processed_dir: data/processed
+  external_dir: data/external
+  artifacts_dir: artifacts
+  models_dir: models
+  dashboards_dir: dashboards
+  interpretation_dir: artifacts/interpretation
+
+# Data Sources Configuration
+data:
+  start_date: "2010-01-01"
+  end_date: null  # null = today
+  
+  # FRED (Federal Reserve Economic Data) - Public data
+  fred:
+    enabled: true
+    series:
+      # Target variable
+      - series_id: CUSR0000SEHC01
+        alias: oer_cpi
+        description: "Owners' Equivalent Rent CPI (SA)"
+      
+      # Labor market indicators
+      - series_id: UNRATE
+        alias: unemployment_rate
+        description: "Unemployment Rate (SA)"
+      - series_id: CES0500000003
+        alias: average_hourly_earnings
+        description: "Average Hourly Earnings, Total Private (SA)"
+      - series_id: CIU2010000000000I
+        alias: employment_cost_index
+        description: "Employment Cost Index, Total Compensation (SA)"
+      
+      # Housing indicators (if available via FRED)
+      - series_id: CSUSHPISA
+        alias: case_shiller_index
+        description: "S&P Case-Shiller Home Price Index (SA)"
+      
+      # Additional CPI components for hierarchical modeling
+      - series_id: CUSR0000SAH1
+        alias: shelter_cpi
+        description: "CPI Shelter (SA)"
+      - series_id: CUUR0000SEHA
+        alias: rent_cpi
+        description: "Rent of Primary Residence (SA)"
+  
+  # Bloomberg Terminal - Requires BQL API access
+  bloomberg:
+    enabled: false  # Set to true in Bloomberg environment
+    series:
+      - ticker: "CPIQOEPS Index"
+        alias: oer_cpi_bloomberg
+        description: "OER CPI from Bloomberg"
+      - ticker: "ZRIOAYOY Index"
+        alias: zori_yoy
+        description: "Zillow Observed Rent Index YoY"
+      - ticker: "ZHVIACUR Index"
+        alias: zhvi
+        description: "Zillow Home Value Index (SA)"
+      - ticker: "USURTOT Index"
+        alias: unemployment_bloomberg
+        description: "US Unemployment Rate"
+      - ticker: "AHE TOTL Index"
+        alias: ahe_bloomberg
+        description: "Average Hourly Earnings"
+      - ticker: "ECICCVYY Index"
+        alias: eci_yoy
+        description: "Employment Cost Index YoY"
+      - ticker: "NHSPSTOT Index"
+        alias: housing_starts
+        description: "New Housing Starts (SA)"
+      - ticker: "NHSLTOT Index"
+        alias: new_home_sales
+        description: "New Home Sales (SA)"
+  
+  # Manual datasets (CSV exports from Zillow, etc.)
+  manual:
+    datasets:
+      - path: data/external/zori.csv
+        date_column: Date
+        value_column: Value
+        rename:
+          Value: zori_index
+        description: "Zillow Observed Rent Index"
+      
+      - path: data/external/zhvi.csv
+        date_column: Date
+        value_column: Value
+        rename:
+          Value: zhvi_index
+        description: "Zillow Home Value Index"
+
+# Feature Engineering Configuration
+features:
+  target_column: oer_yoy
+  drop_na: true
+  
+  # Standard feature recipes
+  recipes:
+    # Target variable (OER YoY)
+    - source: oer_cpi
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: oer_yoy
+      set_as_target: true
+    
+    # ZORI with 12-month lead time
+    - source: zori_index
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: zori_yoy
+        - type: lag
+          periods: 12
+          alias: zori_yoy_lag12m
+    
+    # ZHVI with 16-month lead time
+    - source: zhvi_index
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: zhvi_yoy
+        - type: lag
+          periods: 16
+          alias: zhvi_yoy_lag16m
+    
+    # Case-Shiller with 16-month lead time
+    - source: case_shiller_index
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: case_shiller_yoy
+        - type: lag
+          periods: 16
+          alias: case_shiller_yoy_lag16m
+    
+    # Unemployment rate lags
+    - source: unemployment_rate
+      operations:
+        - type: lag
+          periods: 3
+          alias: unemployment_lag3m
+        - type: lag
+          periods: 6
+          alias: unemployment_lag6m
+        - type: rolling_mean
+          window: 3
+          alias: unemployment_ma3
+    
+    # Average hourly earnings
+    - source: average_hourly_earnings
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: ahe_yoy
+        - type: lag
+          periods: 3
+          alias: ahe_yoy_lag3m
+    
+    # Employment cost index
+    - source: employment_cost_index
+      operations:
+        - type: pct_change
+          periods: 4
+          alias: eci_qoq
+  
+  # Panel-aware features (respects 6-panel BLS structure)
+  panel_features:
+    enabled: true
+    n_panels: 6
+    market_indicators:
+      - zori_index
+      - zhvi_index
+    oer_column: oer_cpi
+    
+    # Creates:
+    # - {indicator}_panel_ma: 6-month moving average
+    # - {indicator}_panel_change: 6-month change
+    # - {indicator}_panel_accel: Acceleration
+    # - {indicator}_vs_panel_avg: Real-time vs BLS view
+    # - {indicator}_oer_spread: Market vs OER divergence
+  
+  # Hierarchical features (CPI structure)
+  hierarchical_features:
+    enabled: true
+    components:
+      shelter: shelter_cpi
+      rent: rent_cpi
+      oer: oer_cpi
+
+# Backtesting Configuration
+backtest:
+  train_window: 120  # 10 years
+  test_window: 6     # 6 months
+  step: 3            # Re-train every 3 months
+  
+  metrics:
+    - rmse
+    - mae
+    - mape
+    - r2
+
+# Model Configuration
+models:
+  candidates:
+    # Baseline: LASSO Regression
+    lasso:
+      enabled: true
+      deploy: true
+      class: oer_model.models.baselines.LassoModel
+      params:
+        name: lasso
+        cv: 5
+        max_iter: 5000
+        alpha: 1.0
+      description: "L1-regularized linear regression with automatic feature selection"
+    
+    # Baseline: Vector Autoregression
+    var:
+      enabled: true
+      deploy: false
+      class: oer_model.models.baselines.VARModel
+      params:
+        name: var
+        params:
+          lags: 6
+          trend: 'c'
+      description: "Multivariate time series model capturing dynamic relationships"
+    
+    # Ensemble: XGBoost
+    xgboost:
+      enabled: true
+      deploy: true
+      class: oer_model.models.xgboost.XGBoostModel
+      params:
+        name: xgboost
+        params:
+          objective: "reg:squarederror"
+          n_estimators: 600
+          learning_rate: 0.05
+          max_depth: 4
+          subsample: 0.9
+          colsample_bytree: 0.9
+          gamma: 0.0
+          min_child_weight: 1
+          reg_lambda: 1.0
+          reg_alpha: 0.0
+          random_state: 42
+      description: "Gradient boosted trees with SHAP interpretability"
+      interpretability:
+        shap_enabled: true
+        shap_plots:
+          - summary
+          - dependence
+          - waterfall
+    
+    # Deep Learning: Temporal Fusion Transformer
+    tft:
+      enabled: true
+      deploy: true
+      class: oer_model.models.tft_interpretable.InterpretableTFT
+      params:
+        name: interpretable_tft
+        params:
+          # Architecture
+          hidden_size: 32
+          attention_head_size: 4
+          dropout: 0.1
+          hidden_continuous_size: 16
+          
+          # Training
+          learning_rate: 0.001
+          max_epochs: 50
+          batch_size: 64
+          gradient_clip_val: 0.1
+          
+          # Forecasting
+          max_encoder_length: 24   # 2 years lookback
+          max_prediction_length: 12  # 1 year forecast horizon
+          
+          # Interpretability
+          output_size: 7  # 7 quantiles for uncertainty
+          quantiles: [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
+          
+          # Hardware
+          accelerator: "cpu"  # or "gpu", "mps" for M1/M2 Macs
+      description: "State-of-the-art attention-based model with built-in interpretability"
+      interpretability:
+        enabled: true
+        generate_reports: true
+        visualizations:
+          - variable_importance
+          - attention_heatmap
+          - forecast_explanation
+    
+    # Advanced: Hierarchical Bottom-Up Ensemble
+    hierarchical:
+      enabled: true
+      deploy: false
+      class: oer_model.models.hierarchical.BottomUpEnsembleModel
+      params:
+        name: hierarchical_bottom_up
+        hierarchy:
+          shelter_rent_weight: 0.32
+          shelter_oer_weight: 0.68
+      description: "Bottom-up forecast aggregating OER and Rent components"
+    
+    # Advanced: Reconciled Hierarchical
+    reconciled:
+      enabled: false
+      deploy: false
+      class: oer_model.models.hierarchical.ReconciliationModel
+      params:
+        name: reconciled_hierarchical
+        method: "ols"  # 'ols', 'wls', or 'mint'
+      description: "Optimal forecast reconciliation across CPI hierarchy"
+
+# Dashboard Configuration
+dashboard:
+  enabled: true
+  host: "127.0.0.1"
+  port: 8050
+  title: "OER Forecast Dashboard - BQNT"
+  
+  # Bloomberg Terminal styling
+  theme: "bloomberg"
+  
+  # Refresh settings
+  auto_refresh: false
+  refresh_interval_seconds: 300
+  
+  # Export settings
+  export_formats:
+    - png
+    - pdf
+    - html
+  
+  # Tabs to display
+  tabs:
+    - overview
+    - performance
+    - interpretation
+    - data_explorer
+
+# Interpretation & Reporting
+interpretation:
+  enabled: true
+  
+  # TFT-specific
+  tft:
+    generate_reports: true
+    forecast_horizons: [1, 3, 6, 12]
+    top_k_features: 10
+    top_k_timesteps: 5
+  
+  # SHAP for tree-based models
+  shap:
+    enabled: true
+    max_display: 15
+    interaction_depth: 2
+  
+  # Output formats
+  outputs:
+    - json
+    - markdown
+    - html
+    - plots
+
+# Logging Configuration
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/oer_forecast.log"
+  console: true
+
+# Deployment Configuration (for BQNT)
+deployment:
+  platform: "bloomberg_bqnt"
+  
+  # Model selection for deployment
+  primary_model: "interpretable_tft"
+  fallback_model: "xgboost"
+  
+  # Update frequency
+  forecast_frequency: "monthly"
+  retrain_frequency: "quarterly"
+  
+  # Alerts
+  alerts:
+    enabled: true
+    thresholds:
+      forecast_change_pct: 0.5  # Alert if forecast changes >0.5%
+      model_rmse_increase_pct: 10  # Alert if validation RMSE increases >10%
