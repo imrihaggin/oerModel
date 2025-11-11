@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from ..config import AppConfig
@@ -88,6 +89,10 @@ def build_feature_matrix(config: AppConfig, raw_df: Optional[pd.DataFrame] = Non
         raw_df = read_dataframe(raw_path, parse_dates=[0])
         raw_df.index = pd.to_datetime(raw_df.index)
     raw_df = raw_df.sort_index().asfreq("M")
+    
+    # Forward-fill missing values to maximize data availability
+    # This allows features to be computed even when some series start later
+    raw_df = raw_df.fillna(method='ffill').fillna(method='bfill')
 
     recipes = [FeatureRecipe.from_dict(recipe) for recipe in config.features.get("recipes", [])]
     if not recipes:
@@ -112,6 +117,17 @@ def build_feature_matrix(config: AppConfig, raw_df: Optional[pd.DataFrame] = Non
     drop_na = config.features.get("drop_na", True)
     if drop_na:
         engineered.dropna(inplace=True)
+    
+    # Replace any infinite values with NaN, then forward-fill
+    engineered.replace([np.inf, -np.inf], np.nan, inplace=True)
+    engineered.fillna(method='ffill', inplace=True)
+    engineered.fillna(method='bfill', inplace=True)
+    
+    # If any NaN/inf remain, drop those rows
+    if engineered.isna().any().any() or np.isinf(engineered.select_dtypes(include=[np.number])).any().any():
+        LOGGER.warning("Dropping rows with remaining NaN or inf values")
+        engineered = engineered.replace([np.inf, -np.inf], np.nan).dropna()
+    
     ensure_directory(config.processed_dir)
     processed_path = config.processed_dir / "features_processed.csv"
     write_dataframe(engineered, processed_path)

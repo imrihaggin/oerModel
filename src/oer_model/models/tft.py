@@ -79,6 +79,8 @@ class TemporalFusionTransformerModel(ForecastModel):
             group_ids=["series_id"],
             max_encoder_length=encoder_length,
             max_prediction_length=max_prediction_length,
+            min_encoder_length=1,
+            min_prediction_length=1,
             time_varying_known_reals=[*covariates, *self.known_future_covariates],
             time_varying_unknown_reals=[self._target_name],
             target_normalizer=GroupNormalizer(groups=["series_id"]),
@@ -108,7 +110,8 @@ class TemporalFusionTransformerModel(ForecastModel):
             loss=None,
         )
         accelerator = self.params.accelerator
-        devices = self.params.devices or (1 if accelerator == "gpu" else None)
+        # Ensure devices is a positive int for CPU/GPU/MPS accelerators
+        devices = self.params.devices or 1
         self._trainer = pl.Trainer(
             max_epochs=self.params.max_epochs,
             gradient_clip_val=self.params.gradient_clip_val,

@@ -72,5 +72,38 @@ def forecast(config, horizon: int) -> None:
     LOGGER.info("Generated forecasts for %d models", frame.shape[1])
 
 
+@cli.command("dashboard")
+@click.option("--port", default=8050, show_default=True, help="Port to run dashboard on")
+@click.option("--host", default="127.0.0.1", show_default=True, help="Host to bind to")
+@click.pass_obj
+def dashboard(config, port: int, host: str) -> None:
+    """Launch interactive dashboard to visualize results."""
+    from .viz.dashboard import create_dashboard
+    
+    artifacts_dir = Path(config.artifacts_dir)
+    forecasts_path = artifacts_dir / "latest_forecasts.csv"
+    
+    # Check if required files exist
+    if not artifacts_dir.exists():
+        LOGGER.error("Artifacts directory not found: %s", artifacts_dir)
+        click.echo("❌ Error: No artifacts found. Run backtest and forecast first.")
+        return
+    
+    if not forecasts_path.exists():
+        LOGGER.warning("Forecasts file not found: %s", forecasts_path)
+        click.echo("⚠️  Warning: No forecasts found. Run: oer-model forecast --horizon 12")
+        click.echo("Dashboard will launch with backtest results only.\n")
+    
+    click.echo("\n" + "="*60)
+    click.echo("🚀 OER Forecasting Dashboard")
+    click.echo("="*60)
+    click.echo(f"\n📊 Dashboard running at: http://{host}:{port}")
+    click.echo(f"\n📁 Loading data from: {artifacts_dir}")
+    click.echo("\n⚡ Press CTRL+C to stop\n")
+    
+    app = create_dashboard(artifacts_dir, forecasts_path)
+    app.run(debug=False, host=host, port=port)
+
+
 if __name__ == "__main__":
     cli()

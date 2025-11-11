@@ -9,7 +9,7 @@ setup(
     license="MIT",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    python_requires=">=3.10",
+    python_requires=">=3.9",
     install_requires=[
         "click>=8.1",
         "numpy>=1.23",

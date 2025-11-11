@@ -480,8 +480,10 @@ def generate_interpretation_report(
     # Auto-detect model type
     if model_type == "auto":
         model_class = model.__class__.__name__.lower()
-        if "xgb" in model_class or "gradient" in model_class or "forest" in model_class:
+        if any(keyword in model_class for keyword in ("xgb", "gradient", "forest", "boost")):
             model_type = "tree"
+        elif any(keyword in model_class for keyword in ("lasso", "linear", "ridge", "elastic")):
+            model_type = "linear"
         elif "tft" in model_class or "temporal" in model_class:
             model_type = "tft"
         else:
@@ -524,6 +526,30 @@ def generate_interpretation_report(
                     artifacts[f'shap_dependence_{i+1}'] = dep_path
     
     # Generate TFT interpretations
+    elif model_type == "linear":
+        LOGGER.info("Generating SHAP interpretations for linear model")
+        shap_result = compute_shap_values(model, X, model_type="linear")
+
+        if shap_result is not None:
+            summary_path = output_dir / f"{model_name}_shap_summary.png"
+            plot_shap_summary(shap_result, summary_path, plot_type="bar")
+            artifacts['shap_summary'] = summary_path
+
+            # Waterfall plot for linear models can still be informative
+            waterfall_path = output_dir / f"{model_name}_shap_waterfall.png"
+            plot_shap_waterfall(shap_result, sample_idx=-1, output_path=waterfall_path)
+            artifacts['shap_waterfall'] = waterfall_path
+
+            # Dependence plots for top features
+            if len(shap_result['feature_names']) > 0:
+                mean_abs_shap = np.abs(shap_result['shap_values']).mean(axis=0)
+                top_features = [shap_result['feature_names'][i]
+                                for i in np.argsort(mean_abs_shap)[-3:][::-1]]
+                for i, feature in enumerate(top_features):
+                    dep_path = output_dir / f"{model_name}_shap_dep_{i+1}_{feature}.png"
+                    plot_shap_dependence(shap_result, feature, output_path=dep_path)
+                    artifacts[f'shap_dependence_{i+1}'] = dep_path
+
     elif model_type == "tft":
         LOGGER.info("Generating TFT interpretations (attention & variable importance)")
         

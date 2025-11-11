@@ -42,6 +42,9 @@ def collect_raw_data(config: AppConfig) -> pd.DataFrame:
     manual_cfg = data_cfg.get("manual", {})
     for dataset in manual_cfg.get("datasets", []):
         csv_path = Path(dataset["path"])
+        if not csv_path.exists():
+            LOGGER.warning("Skipping manual dataset (not found): %s", csv_path)
+            continue
         rename_map = dataset.get("rename", {})
         drop_cols = dataset.get("drop", [])
         frames.append(zillow.load_zillow_csv(csv_path, rename_map, drop_cols))

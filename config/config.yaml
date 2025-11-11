@@ -7,19 +7,66 @@ project:
   dashboards_dir: dashboards
 
 data:
-  start_date: "2010-01-01"
-  end_date: null
+  start_date: "1990-01-01"
+  end_date: null  # null => today
   fred:
     enabled: true
     series:
+      # Core OER and Housing
       - series_id: CUSR0000SEHC01
         alias: oer_cpi
+      - series_id: CPIHOSSL
+        alias: rent_of_shelter
+      - series_id: CUSR0000SEHA
+        alias: rent_of_primary_residence
+      
+      # Housing Market Indicators
+      - series_id: HOUST
+        alias: housing_starts
+      - series_id: PERMIT
+        alias: building_permits
+      - series_id: MSACSR
+        alias: monthly_supply_homes
+      - series_id: MORTGAGE30US
+        alias: mortgage_rate_30y
+      - series_id: ASPUS
+        alias: average_sales_price
+      
+      # Labor Market
       - series_id: UNRATE
         alias: unemployment_rate
       - series_id: CES0500000003
         alias: average_hourly_earnings
+      - series_id: PAYEMS
+        alias: nonfarm_payroll
       - series_id: CIU2010000000000I
         alias: employment_cost_index
+      - series_id: CIVPART
+        alias: labor_participation_rate
+      
+      # Inflation & Monetary Policy
+      - series_id: CPIAUCSL
+        alias: cpi_all_items
+      - series_id: CPILFESL
+        alias: cpi_core
+      - series_id: PCEPI
+        alias: pce_price_index
+      - series_id: DFF
+        alias: fed_funds_rate
+      - series_id: T10Y2Y
+        alias: treasury_yield_spread
+      
+      # Economic Activity
+      - series_id: INDPRO
+        alias: industrial_production
+      - series_id: RSXFS
+        alias: retail_sales
+      - series_id: PCE
+        alias: personal_consumption
+      - series_id: DPCERAM1M225NBEA
+        alias: real_personal_income
+      - series_id: UMCSENT
+        alias: consumer_sentiment
   bloomberg:
     enabled: false
     series: []
@@ -38,20 +85,48 @@ features:
   target_column: oer_cpi_yoy
   drop_na: true
   recipes:
+    # Target: OER YoY
     - source: oer_cpi
       operations:
         - type: pct_change
           periods: 12
           alias: oer_cpi_yoy
       set_as_target: true
-    - source: zori_index
+
+    # Generic transforms applied to many indicators: MoM, 3m, YoY, and lags
+    # The feature builder supports: pct_change, lag, diff, rolling_mean
+
+    # Housing & price signals
+    - source: average_sales_price
+      operations:
+        - type: pct_change
+          periods: 1
+          alias: home_price_mom
+        - type: pct_change
+          periods: 3
+          alias: home_price_3m
+        - type: pct_change
+          periods: 12
+          alias: home_price_yoy
+        - type: lag
+          periods: 6
+          alias: home_price_lag6
+        - type: lag
+          periods: 12
+          alias: home_price_lag12
+        - type: rolling_mean
+          window: 6
+          alias: home_price_ma6
+
+    - source: case_shiller_index
       operations:
         - type: pct_change
           periods: 12
-          alias: zori_yoy
+          alias: case_shiller_yoy
         - type: lag
-          periods: 12
-          alias: zori_yoy_lag12
+          periods: 16
+          alias: case_shiller_lag16
+
     - source: zhvi_index
       operations:
         - type: pct_change
@@ -60,21 +135,169 @@ features:
         - type: lag
           periods: 16
           alias: zhvi_yoy_lag16
-    - source: unemployment_rate
+
+    # Mortgage & affordability
+    - source: mortgage_rate_30y
       operations:
+        - type: diff
+          periods: 1
+          alias: mortgage_rate_change_mom
+        - type: diff
+          periods: 12
+          alias: mortgage_rate_change_yoy
         - type: lag
           periods: 3
-          alias: unemployment_rate_lag3
+          alias: mortgage_rate_lag3
+        - type: rolling_mean
+          window: 3
+          alias: mortgage_rate_ma3
+
+    # Housing supply
+    - source: housing_starts
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: housing_starts_yoy
+        - type: lag
+          periods: 6
+          alias: housing_starts_lag6
+        - type: rolling_mean
+          window: 6
+          alias: housing_starts_ma6
+
+    - source: building_permits
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: permits_yoy
+        - type: lag
+          periods: 6
+          alias: permits_lag6
+
+    # Rent indices
+    - source: rent_of_primary_residence
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: rent_pri_res_yoy
+        - type: lag
+          periods: 1
+          alias: rent_pri_res_yoy_lag1
+
+    - source: rent_of_shelter
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: rent_shelter_yoy
+
+    # Labor market indicators
+    - source: unemployment_rate
+      operations:
+        - type: pct_change
+          periods: 3
+          alias: unemployment_3m
+        - type: lag
+          periods: 1
+          alias: unemployment_lag1
+        - type: lag
+          periods: 6
+          alias: unemployment_lag6
+
     - source: average_hourly_earnings
       operations:
         - type: pct_change
           periods: 12
           alias: ahe_yoy
+        - type: lag
+          periods: 3
+          alias: ahe_yoy_lag3
+        - type: rolling_mean
+          window: 3
+          alias: ahe_ma3
+
+    - source: nonfarm_payroll
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: payroll_yoy
+
     - source: employment_cost_index
       operations:
         - type: pct_change
           periods: 4
           alias: eci_yoy
+
+    # Inflation & monetary policy
+    - source: cpi_core
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: cpi_core_yoy
+        - type: lag
+          periods: 1
+          alias: cpi_core_yoy_lag1
+
+    - source: cpi_all_items
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: cpi_all_yoy
+
+    - source: pce_price_index
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: pce_yoy
+
+    - source: fed_funds_rate
+      operations:
+        - type: diff
+          periods: 12
+          alias: fed_funds_change_yoy
+        - type: lag
+          periods: 3
+          alias: fed_funds_lag3
+
+    - source: treasury_yield_spread
+      operations:
+        - type: lag
+          periods: 3
+          alias: yield_spread_lag3
+
+    # Economic activity & sentiment
+    - source: industrial_production
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: industrial_prod_yoy
+
+    - source: retail_sales
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: retail_sales_yoy
+
+    - source: consumer_sentiment
+      operations:
+        - type: pct_change
+          periods: 12
+          alias: sentiment_yoy
+        - type: lag
+          periods: 3
+          alias: sentiment_lag3
+
+    # Seasonal and time trend features
+    - source: oer_cpi
+      operations:
+        - type: lag
+          periods: 1
+          alias: oer_lag1
+        - type: lag
+          periods: 12
+          alias: oer_lag12
+        - type: rolling_mean
+          window: 12
+          alias: oer_ma12
 
 backtest:
   train_window: 120
@@ -106,23 +329,27 @@ models:
       params:
         name: xgboost
         params:
-          n_estimators: 600
-          learning_rate: 0.05
-          max_depth: 4
-          subsample: 0.9
-          colsample_bytree: 0.9
+          n_estimators: 440
+          learning_rate: 0.015157859745961837
+          max_depth: 2
+          subsample: 0.9685426973767889
+          colsample_bytree: 0.6241516890461052
+          reg_alpha: 0.0017177795022621108
+          reg_lambda: 0.0033822554074140415
+          min_child_weight: 7
+          gamma: 0.22604303767977008
+          random_state: 42
     tft:
-      enabled: false
-      deploy: false
-      class: oer_model.models.tft.TemporalFusionTransformerModel
+      enabled: true
+      deploy: true
+      class: oer_model.models.tft_tensorflow.TFTTensorFlowModel
       params:
         name: tft
         params:
-          max_encoder_length: 18
-          max_prediction_length: 6
-          hidden_size: 32
+          max_encoder_length: 3
+          hidden_size: 64
           attention_head_size: 4
-          dropout: 0.1
+          dropout: 0.2
           learning_rate: 0.001
+          batch_size: 32
           max_epochs: 50
-          accelerator: cpu

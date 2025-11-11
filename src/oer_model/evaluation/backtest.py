@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
@@ -21,6 +21,8 @@ class BacktestConfig:
     train_window: int
     test_window: int
     step: int = 1
+    max_windows: Optional[int] = None
+    log_frequency: int = 1
 
 
 def rolling_windows(index: Iterable[pd.Timestamp], cfg: BacktestConfig) -> List[Tuple[int, int, int, int]]:
@@ -35,6 +37,8 @@ def rolling_windows(index: Iterable[pd.Timestamp], cfg: BacktestConfig) -> List[
         test_start = train_end + 1
         test_end = test_start + cfg.test_window - 1
         windows.append((train_start, train_end, test_start, test_end))
+        if cfg.max_windows is not None and len(windows) >= cfg.max_windows:
+            break
     return windows
 
 
@@ -54,7 +58,7 @@ def run_backtest(
         raise RuntimeError("Backtest configuration produced no splits")
 
     results = []
-    for train_start, train_end, test_start, test_end in splits:
+    for window_idx, (train_start, train_end, test_start, test_end) in enumerate(splits):
         train = data.iloc[train_start:train_end + 1]
         test = data.iloc[test_start:test_end + 1]
         model = model_factory()
@@ -74,5 +78,11 @@ def run_backtest(
                 **metrics.to_dict(),
                 "model": model.name,
             })
-        LOGGER.info("Backtest window ending %s RMSE %.4f", index[train_end], metrics["rmse"])
+        should_log = (
+            cfg.log_frequency <= 1
+            or (window_idx + 1) % cfg.log_frequency == 0
+            or window_idx == len(splits) - 1
+        )
+        if should_log:
+            LOGGER.info("Backtest window ending %s RMSE %.4f", index[train_end], metrics["rmse"])
     return pd.DataFrame(results)
