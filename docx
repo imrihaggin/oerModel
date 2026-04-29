@@ -1,0 +1,135 @@
+Hesitation as a construct has two dimensions worth keeping separable in extraction: intent (postponement, deferral, conditional commitment) and uncertainty (visibility, conviction, range-widening). They move differently at cycle turns — uncertainty tends to rise first, intent-to-defer follows. Mixing them at extraction loses information you’ll want at decomposition time.
+What to extract per call (per topic — capex, hiring, M&A, demand):
+	•	Directional commitment on capex: accelerate / maintain / defer / cut, with magnitude language and conditioning (“subject to”, “if”, “depending on”)
+	•	Guidance range width as % of midpoint; range-widening or guidance withdrawal is a strong binary signal
+	•	Decision-postponement verb density: defer, delay, postpone, push out, reassess, revisit, monitor, evaluate
+	•	Visibility language: “limited visibility”, “tough to forecast”, “wait and see”
+	•	Q&A asymmetry — analyst presses on capex specifics, management deflects (high-signal, often missed by tone-only approaches)
+	•	Time-horizon shrinkage: are they discussing 2027–28 plans, or quarter-to-quarter?
+	•	Exogenous-driver attribution: tariffs, tax, election, regulatory, geopolitics — frequency and whether explicitly tied to capex decisions
+	•	Project-level signals: named project pauses/delays/scale-backs vs. accelerations
+	•	Modal/hedging density (Loughran-McDonald uncertainty is a defensible baseline; LLM-extracted is richer because it captures syntax)
+	•	CFO–CEO asymmetry on the same topic — CFOs lead in cautious shifts
+How to combine — pushing back on yourself a bit:
+PCA is the right first step for the same reason it worked for you before with the patience-with-planning index: unsupervised, not data-mined to any target, defensible to publish. Standardize features, run PCA, look at PC1–3 with varimax rotation. My bet is the structure splits into something like uncertainty vs. intent-to-defer vs. exogenous-attribution, which is itself a publishable story.
+But for predictive use, build a parallel supervised composite. Same feature matrix, LASSO or elastic net with expanding-window time-aware CV (not k-fold) onto NFRI 1–2Q ahead and ISM new orders 1–2Q ahead. Compare the unsupervised PC1 index to the LASSO index. If correlation is >0.85, you have convergent evidence — publish PC1, cite LASSO as robustness. If they diverge, you have a story about what unsupervised PCA is missing, which is also publishable. Skipping this comparison is the easiest way to ship something that looks elegant but underperforms a naive supervised approach.
+Aggregation matters and is often where these projects die. Firm → sector → economy, with sector weights from BEA Fixed Asset Accounts (capex-weighted), not revenue-weighted — revenue ≠ investment intent. And track breadth (share of firms hesitating) separately from depth (intensity within hesitating firms). Breadth typically leads ISM more cleanly than depth.
+On “best fit” — lock targets up front:
+Primary: NFRI YoY 1–2Q ahead (your prior result lived here). Secondary: ISM Manufacturing new orders 1–2Q ahead. Convergent-validity checks (concurrent, not predictive): Atlanta Fed business uncertainty, Duke CFO survey capex intentions, BBD EPU. The proof is the cross-correlogram shape from leads –4 to +4 — a clean peak at +1 or +2 is the result; a peak at 0 means you’ve measured contemporaneous tone, not leading hesitation. Benchmark out-of-sample against AR(1) and against survey-based capex diffusion (Empire State, Philly Fed, NFIB) — if you can’t beat the surveys, the index is a complement, not a substitute, and you should frame it that way.
+One framing note: worth pinning down whether your construct is closer to Clayton et al.’s or to a Baker-Bloom-Davis-adjacent “policy uncertainty exposure” measure. Reviewers and the buy-side will ask how yours differs — having the answer ready (“we measure firm-articulated intent to defer, not exposure to macro uncertainty”) sharpens the pitch.​​​​​​​​​​​​​​​​
+Here’s a prompt designed for the dual-dimension structure (intent vs. uncertainty) and built to produce machine-parseable output you can stack into a feature matrix.
+
+You are extracting structured signals from an earnings call transcript for a quantitative index of corporate capex hesitation. Be precise, conservative, and literal. Do not infer beyond what is stated. If a field is not discussed, return null — never guess.
+
+INPUT: Full earnings call transcript (prepared remarks + Q&A).
+
+For each of the four TOPICS — capex, hiring, M&A, demand — extract the following, returning valid JSON only.
+
+DEFINITIONS (read carefully):
+- "Intent": stated decisions or commitments about future action (accelerate, maintain, defer, cut).
+- "Uncertainty": stated confidence, visibility, or forecastability of outcomes.
+- These are SEPARATE. A firm can be highly committed to deferring (high intent-to-defer, low uncertainty) or uncertain but still committing (high uncertainty, neutral intent). Do not collapse them.
+- "Conditional commitment": any future action gated on an external event ("if tariffs...", "subject to...", "depending on...", "pending clarity on...").
+- Distinguish PREPARED REMARKS from Q&A. Tag each extraction with section = "prepared" or "qa".
+- Distinguish CEO from CFO statements where speaker is identifiable.
+
+For each TOPIC, extract:
+
+1. direction: one of ["accelerate", "maintain", "defer", "cut", "mixed", "not_discussed"]
+   - "defer" = explicit postponement language (delay, push out, postpone, revisit, reassess later)
+   - "cut" = explicit reduction in level
+   - "mixed" = different signals across business segments
+
+2. magnitude_language: verbatim quote of the strongest directional phrase (max 25 words), or null
+
+3. conditional: boolean — is the stated plan gated on an external condition?
+
+4. conditioning_drivers: array from ["tariffs", "trade_policy", "tax_policy", "election", "regulatory", "interest_rates", "demand_visibility", "geopolitics", "fx", "input_costs", "labor", "other"], or []
+
+5. guidance_range: object or null
+   - prior_midpoint, current_midpoint, prior_width, current_width (numeric, in stated units)
+   - withdrawn: boolean (was guidance pulled?)
+   - widened: boolean (range explicitly broadened vs. prior)
+
+6. visibility_language: array of verbatim phrases (max 20 words each) indicating limited foresight ("hard to predict", "limited visibility", "wait and see", "too early to tell"). Empty array if none.
+
+7. postponement_verbs: count of distinct postponement-family verbs used by management re: this topic (defer, delay, postpone, push out, pause, hold off, reassess, revisit, monitor, evaluate). Count instances, not unique verbs.
+
+8. time_horizon_mentioned: shortest forward horizon discussed for this topic — one of ["next_quarter", "this_year", "next_year", "multi_year", "not_specified"]
+
+9. project_level_signals: array of objects, one per named project/segment/initiative:
+   - name (string)
+   - action: ["paused", "delayed", "scaled_back", "cancelled", "accelerated", "expanded", "on_track"]
+   - quote: verbatim, max 25 words
+
+10. qa_deflection: object — applies to Q&A only
+    - analyst_pressed: boolean (did an analyst directly ask for capex/hiring/M&A specifics?)
+    - management_specific: boolean (did management answer with a number, range, or concrete commitment?)
+    - deflection_quote: verbatim deflecting phrase if applicable, max 25 words, else null
+
+11. speaker_split: object
+    - ceo_tone: ["more_cautious", "aligned", "more_confident", "not_distinguishable"] relative to CFO on this topic
+    - cfo_tone: same enum, relative to CEO
+
+CALL-LEVEL FIELDS (not per-topic):
+
+12. modal_hedging_density: count of hedging modals/qualifiers across full transcript per 1000 words (might, may, could, possibly, perhaps, somewhat, roughly, approximately, around, likely, unlikely, uncertain). Report count and per-1000-word rate.
+
+13. forward_horizon_shrinkage: boolean — did management explicitly note shortening their planning horizon, or decline to discuss horizons they previously addressed? Quote if true.
+
+14. exogenous_driver_capex_link: array of objects where management explicitly tied an external driver to a capex/investment decision:
+    - driver (from list above)
+    - quote (verbatim, max 25 words)
+    - direction (accelerate/defer/cut/maintain)
+
+15. notable_quotes: up to 3 verbatim quotes (max 25 words each) most diagnostic of overall hesitation posture, with speaker and section tagged.
+
+OUTPUT FORMAT: Single valid JSON object. No prose, no markdown, no commentary outside JSON. Schema:
+
+{
+  "ticker": "...",
+  "period": "...",
+  "topics": {
+    "capex": { ...fields 1–11... },
+    "hiring": { ... },
+    "ma": { ... },
+    "demand": { ... }
+  },
+  "modal_hedging_density": {...},
+  "forward_horizon_shrinkage": {...},
+  "exogenous_driver_capex_link": [...],
+  "notable_quotes": [...]
+}
+
+CRITICAL RULES:
+- If the transcript does not address a topic, set direction to "not_discussed" and other fields to null/empty.
+- Never paraphrase a "verbatim" field. If you cannot find a clean quote ≤25 words, return null.
+- Do not infer sentiment from tone alone — these fields are about stated content.
+- Conservative bias: when ambiguous between two directions, choose "mixed" or "maintain".
+
+
+A few notes on why it’s built this way:
+The 25-word quote cap and “never paraphrase verbatim fields” rule are there because you’ll want quote-level audit trails when reviewers ask how the index works. It also lets you validate extraction quality on a sample by hand — random 50 calls, check verbatims against transcripts, compute extraction accuracy. Without that, you can’t defend the pipeline.
+The CEO/CFO split and prepared/Q&A split add ~2x feature dimensionality but carry real signal — both have shown up in the empirical literature. If compute pressure forces a cut, drop CEO/CFO before dropping prepared/Q&A.
+Run this with temperature=0 and structured outputs / JSON mode enabled. Validate against schema on parse; reject and retry on failure rather than silently dropping calls. Budget one run per call — don’t iterate the prompt per call, that introduces inconsistency in your panel.
+For sanity, before running on the full corpus, pull 20 calls spanning a known stress period (Q4 2018, Q1 2020, Q2 2022) and a calm period (mid-2017, late 2019) and inspect outputs. If the stress/calm contrast isn’t visible in raw extractions before any aggregation, the prompt needs adjustment, not the index construction.​​​​​​​​​​​​​​​​
+Right — and that lead-time goal should shape the prompt and the panel design more than I had it. A few adjustments worth making before you run anything.
+The lead target dictates which firms you sample. ISM Manufacturing is a goods-sector signal, so weight the panel toward manufacturers, industrials, materials, and capex-heavy sectors (semis, machinery, chemicals, transports). S&P 1500 industrials + Russell 2000 manufacturers will lead ISM better than a market-cap-weighted universe, which is software-heavy and has weak ISM linkage. For consumer sentiment, you want a different sub-panel — consumer discretionary, retail, restaurants, autos, housing. Run them as separate sub-indices and validate each against its own target. A single blended index will underperform two targeted ones.
+Add demand-side extraction fields. The current prompt is capex-centric, which is right for NFRI but underweights what leads ISM new orders and consumer sentiment. Worth adding under the “demand” topic:
+	•	order_book_language: backlog growing / stable / shrinking, with quote
+	•	customer_behavior_shifts: destocking, pre-buying ahead of tariffs, trade-down, deferral of purchases — verbatim
+	•	end_market_visibility: separate from firm-level visibility; what are their customers telling them?
+	•	pricing_power: holding / eroding / improving (leads CPI goods and margin compression stories)
+	•	inventory_posture: building / drawing / target — leads ISM inventories sub-index directly
+Customer-behavior language from earnings calls historically leads consumer sentiment by roughly a quarter because firms see transaction-level shifts before households report them in surveys. That’s the channel you want to capture.
+Lead structure varies by target — measure each separately. Rough empirical priors from the literature and what’s likely to hold:
+	•	NFRI: 1–2Q lead (your prior result)
+	•	ISM new orders: 1Q lead, possibly coincident
+	•	ISM headline: 1–2Q lead
+	•	Consumer sentiment (Michigan/Conference Board): 1Q lead via customer-behavior channel
+	•	Capex plans surveys (Philly, Empire, Duke CFO): likely coincident or slight lead — these are your convergent-validity check, not a prediction target
+	•	Payrolls/hiring: hiring-topic extractions should lead ADP and BLS establishment by 1Q
+Build the cross-correlogram for each target individually from leads –4 to +4. Don’t average them. The publishable result is “our index leads X by N quarters with correlation ρ” — one row per target.
+Timing discipline is where this lives or dies. Earnings calls cluster in weeks 3–6 after quarter-end. A Q1 call in late April is contemporaneous with the April ISM print, not leading it. Index construction has to be vintage-aware: each index value is dated by the call date, and when you regress against ISM, you compare the index as-of-date-T to ISM released at T+k. The naive version (averaging all Q1 calls and dating the index “Q1”) destroys most of the apparent lead because half the Q1 calls happen after the Q1 ISM is already public. A weekly or bi-weekly rolling index dated by call date is the right structure. This is the single most common reason these projects look impressive in-sample and fail out-of-sample.
+One feature you’ll want specifically for ISM-leading: customer destocking/restocking language. ISM inventories and new orders are dominated by inventory cycle dynamics, and earnings calls have explicit destocking commentary 1–2 quarters before it shows up in ISM. Pull that out as its own field and watch its correlogram separately — it may be your single best ISM-leading feature, and it would justify a standalone chart in the writeup.
+On framing for publication: “leads ISM” is a strong claim and reviewers will press on whether you’re really leading or just nowcasting faster than the survey publishes. The defense is the call-date timestamping plus a head-to-head against the regional Fed surveys (Empire, Philly, Richmond, KC, Dallas), which publish before ISM. If your index leads ISM but not the regional surveys, you’re nowcasting. If it leads the regional surveys too, you have a real lead. Worth building that comparison in from the start rather than discovering it in peer review.​​​​​​​​​​​​​​​​
