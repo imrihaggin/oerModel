@@ -141,4 +141,60 @@ and then map industry j’s capex into the industries that supply its investment
 
 So I wouldn’t optimize the weighting until the aggregate chart turns positive. That risks data mining. Use the transcript granularity to construct something conventional macro data fundamentally cannot observe: surprises, transitions, composition, commitment stage, and customer→supplier transmission. If one of those works out of sample, that’s where the defensible alpha is likely to be.
 
-BQNT export scripts to automate dashboard publishing directly within the terminal environment.
+
+
+
+Ultimate objective: construct 3–5 economically interpretable transcript-derived leading indicators that can be plotted like my existing blue line against ISM PMI, IP Manufacturing, core capital-goods orders, and private investment.
+
+The indicators must not obtain their predictive relationship mechanically from base effects, inversion, YoY arithmetic, or shifting a coincident cyclical variable.
+
+Start from the firm-level residual/surprise dataset we already built. Do not optimize arbitrary transformations for maximum correlation.
+
+Construct these candidate series:
+
+1. Capex Surprise Breadth
+> CSB_t=P(\epsilon_{i,t}>0)-P(\epsilon_{i,t}<0)
+>
+This measures how broadly management CAPEX intentions are unexpectedly improving.
+
+2. Downside Capex Surprise / Early-Warning Index
+Use the p10 or lower-tail residual signal that was already strong in the previous experiment. Test p10/p20/p25 before choosing a definition. Higher values should consistently mean stronger future activity; orient the sign once based on economic interpretation, not based on which sign maximizes correlation.
+
+3. Capex Turning-Point Breadth
+At the firm level, identify changes in residual signal from the previous earnings call. Calculate:
+> P(\text{negative}\rightarrow\text{positive})
+> -
+> P(\text{positive}\rightarrow\text{negative})
+>
+This should capture new corporate turns, rather than the level of the business cycle.
+
+4. Cross-Industry Capex Surprise Breadth
+First aggregate residuals within industries. Then calculate the fraction of industries with positive versus negative surprises. Give every industry equal weight initially so that transcript coverage doesn’t determine the result.
+
+5. Capex Surprise Diffusion
+Construct a diffusion index centered on 50 from the firm-level residuals, analogous in presentation to a PMI. Positive unexpected CAPEX intentions push it above 50; negative surprises push it below 50.
+
+For each candidate, create a causal real-time series using only information available as of each date. Produce raw, trailing-3m, trailing-6m and trailing-12m versions. No centered smoothing.
+
+Test each against future ISM PMI, ISM New Orders, IP Manufacturing and core capital-goods orders at predetermined horizons 0, 1Q, 2Q, 3Q, 4Q, 6Q and 8Q.
+
+Do not select a different transformation and lead for every target. Look for one or two specifications that have broadly consistent economic timing across targets.
+
+Most importantly, run a horse race against simple cyclical predictors. Test whether the transcript indicator adds forecasting information conditional on current ISM, lagged ISM and the recent change in ISM. If possible also condition on current core-orders growth.
+
+Report:
+
+* full lead/lag correlation curves;
+* incremental predictive coefficient;
+* incremental out-of-sample R²;
+* performance excluding 2020–21;
+* performance separately pre/post 2020;
+* stability of the chosen lead;
+* whether sign and lead were specified ex ante or selected in sample.
+
+Finally, generate presentation charts exactly like my existing chart: Actual Timing on the bottom and Shifted to Align on top. But only make the shifted chart for signals that pass the incremental/out-of-sample tests.
+
+The goal is NOT to maximize correlation. The goal is to find a defensible series where today’s transcript surprises contain information about economic activity that has not yet appeared in conventional cyclical indicators.
+
+
+      BQNT export scripts to automate dashboard publishing directly within the terminal environment.
