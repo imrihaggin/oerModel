@@ -196,5 +196,98 @@ Finally, generate presentation charts exactly like my existing chart: Actual Tim
 
 The goal is NOT to maximize correlation. The goal is to find a defensible series where today’s transcript surprises contain information about economic activity that has not yet appeared in conventional cyclical indicators.
 
+Stop searching for the highest-correlation aggregate index. Determine where the transcript residual creates incremental, actionable macro information.
 
+Run four experiments.
+
+1. Forecast horse race. For ISM, ISM New Orders, industrial production, core capital-goods orders, equipment investment and construction spending, estimate a conventional real-time baseline using only lagged target variables and whatever macro variables are already in the dataset. Then add the transcript residual features. Use expanding/rolling pseudo-out-of-sample estimation. Report baseline versus baseline+LLM out-of-sample R², RMSE and forecast errors at 1Q, 2Q, 3Q and 4Q horizons. Do not optimize horizons based on the full sample.
+
+2. Turning-point experiment. Define objective macro turning points and ask whether the residual cross-section improves the probability of identifying a turn over the next 3/6/9 months. Use mean, p10, p25, median, dispersion, negative-surprise breadth, positive-surprise breadth and industry breadth. Evaluate false positives as well as true positives.
+
+3. Regime/conditional information. Determine when residuals matter. Interact them with current ISM level/direction and divide firms by industry. Test whether residual deterioration is particularly informative when ISM is high but weakening, low but improving, etc. Also test whether disagreement/dispersion has information independent of the mean.
+
+4. Sector-to-macro mapping. Build residual indexes by NAICS sector and determine which sectors predict which macro series. Don’t maximize correlation blindly. Establish economically sensible mappings—for example, manufacturing/equipment-related corporate intentions → capital-goods orders/IP; construction-related intentions → construction investment. Then create a macro dashboard from the validated sector signals.
+
+For every result distinguish contemporaneous explanatory power, genuine forecasting power, and turning-point information. Do not call increased in-sample R² alpha. Preserve a locked out-of-sample period and account for multiple testing.
+
+The result that would impress me
+
+Not another chart with two lines that happen to have r=.7.
+
+Imagine presenting this:
+
+Panel 1 — “What companies are saying that the macro data doesn’t know.”
+
+Your Capex Expectations Surprise Index, centered around zero. It doesn’t need to mimic ISM.
+
+Panel 2 — Forecast improvement.
+
+Something as simple as:
+
+\text{Macro-only model}
+\quad\rightarrow\quad
+\text{Macro + 22,000 firms' transcript surprises}
+
+and then demonstrate that adding the transcript information reduces genuine out-of-sample forecast error for, say, 6-month-ahead manufacturing activity.
+
+That is much harder to dismiss than visual correlation.
+
+Panel 3 — Cross-sectional heat map.
+
+Rows = industries. Columns = quarters/months. Show unexpected acceleration/deceleration. Then say something like:
+
+“The aggregate macro data looks stable, but deterioration is spreading from 3 of 20 industries to 11 of 20.”
+
+That’s a product a macro strategist could actually use.
+
+And there may be an even better use: disagreement
+
+You’ve got something most macro datasets don’t have: thousands of individual corporate observations underneath the aggregate.
+
+Consequently,
+
+\text{Mean residual}
+
+may not be your killer variable. Try:
+
+\text{Dispersion}(\epsilon_{i,t}),
+\qquad
+P_{10}(\epsilon_{i,t}),
+\qquad
+P_{90}(\epsilon_{i,t}),
+
+and especially
+
+\text{Breadth}_t=
+\%\{\epsilon_i>0\}-\%\{\epsilon_i<0\}.
+
+Your earlier result that the p10 residual appeared particularly informative makes me interested in the lower tail. It could be that macro turns don’t begin with the average company changing its mind. They begin with a minority of companies encountering unexpectedly bad conditions, after which the weakness diffuses.
+
+That’s an intrinsically cross-sectional phenomenon. A conventional macro series can’t give you the same observation.
+
+I’d also broaden beyond CAPEX
+
+Once you’ve proven the residual concept, the really impressive demonstration of the tool isn’t one CAPEX index.
+
+Run the same frozen LLM framework over every transcript and extract independently:
+
+\begin{array}{ccc}
+\text{CAPEX} & \text{Hiring} & \text{Demand}\\
+\text{Inventories} & \text{Pricing} & \text{Margins}\\
+\text{Orders} & \text{Supply chain} & \text{Credit conditions}
+\end{array}
+
+Then residualize each one.
+
+Now you potentially have a Corporate Macro Expectations System derived from thousands of management teams.
+
+That’s closer to what central banks already find interesting about earnings-call text: for example, the ECB has used transcript analysis to construct timely corporate sentiment/risk measures, updated during the quarter.  And expectations data have long been shown to contain investment information not subsumed by conventional financial variables. 
+
+Your presentation can then tell a much stronger story:
+
+Traditional data tells us what companies have done. Earnings transcripts tell us what thousands of management teams are planning, where those expectations are changing unexpectedly, and how those changes are diffusing across industries.
+
+Then show one compelling historical episode where the macro indicators still looked benign while your cross-sectional transcript dashboard was changing. Follow that with the full out-of-sample statistics so it’s clear the episode wasn’t cherry-picked.
+
+If I were allocating your research time, I’d spend much less effort now trying to manufacture the perfect blue line from the CAPEX aggregate, and much more on forecast improvement + turning points + cross-sectional diffusion + sector decomposition. That’s where the granularity of your dataset actually gives you something a normal macro strategist doesn’t already have.
       BQNT export scripts to automate dashboard publishing directly within the terminal environment.
