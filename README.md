@@ -288,6 +288,135 @@ Your presentation can then tell a much stronger story:
 Traditional data tells us what companies have done. Earnings transcripts tell us what thousands of management teams are planning, where those expectations are changing unexpectedly, and how those changes are diffusing across industries.
 
 Then show one compelling historical episode where the macro indicators still looked benign while your cross-sectional transcript dashboard was changing. Follow that with the full out-of-sample statistics so it’s clear the episode wasn’t cherry-picked.
+For a nontechnical audience, do not lead with “residuals,” regressions, or R². Lead with a simple claim:
 
+The transcripts contain information that the traditional data misses.
+
+Then use the statistics as evidence underneath that claim. There is external research consistent with this framing: LLM-extracted managerial expectations from earnings calls have shown incremental forecasting information beyond existing measures. 
+
+I’d build the story across three slides.
+
+Slide 1 — “What does the LLM add?”
+
+Make this almost conceptual.
+
+Traditional macro data → what we already know
+Earnings transcripts → what management teams are saying
+LLM → extracts thousands of company-level changes
+Result → better read on the economy
+
+Then one sentence:
+
+Even after stripping out information already captured by the business cycle, the transcript signal improves our ability to explain/forecast economic outcomes.
+
+Call the residual “incremental transcript signal” or “unexpected management signal” on the slide. “Residual” belongs in the appendix.
+
+⸻
+
+Slide 2 — The visual that demonstrates the level-up
+
+This is probably your strongest visual.
+
+For each macro variable, show two bars:
+
+Traditional model | Traditional model + LLM
+
+Use whatever genuinely out-of-sample metric you’ve established—forecast-error reduction is easiest for a broad audience.
+
+For example, conceptually:
+
+Forecast error
+
+ISM                 ██████████ → ███████
+Cap goods     ██████████ → ██████
+IP                     ██████████ → ███████
+Construction   ██████████ → █████
+
+Headline:
+
+Reading corporate America improves the macro model
+
+And put one large number in the corner if supported by your actual results:
+
+XX% lower forecast error
+
+That’s far more intuitive than “R² increased from .42 to .51.”
+
+If all you currently have is in-sample R², however, don’t translate that into forecast improvement. Label it “additional explanatory power” and make out-of-sample forecasting your next experiment.
+
+⸻
+
+Slide 3 — Show why this is different
+
+This is where your dataset becomes visually impressive.
+
+I’d make an industry × time heatmap.
+
+Rows:
+
+Semiconductors
+Machinery
+Autos
+Chemicals
+Retail
+Software
+Transportation
+Construction
+etc.
+
+Columns = months/quarters.
+
+Cells = unexpected acceleration/deceleration in management CAPEX intentions.
+
+Then put ISM underneath.
+
+Now your audience can visually see something like:
+
+The headline index hasn’t moved much—but deterioration is spreading underneath the surface.
+
+That is much more compelling than another ISM overlay.
+
+And it communicates why an LLM is necessary: no human macro strategist can consistently read tens of thousands of calls and quantify the cross-section every quarter.
+
+⸻
+
+There is also a killer fourth slide if your results support it: “What the aggregate hides.”
+
+Show three lines rather than one:
+
+Upside tail — median — downside tail
+
+Your previous work suggested the p10/downside residual was unusually informative. If that survives robustness testing, that’s an excellent demonstration.
+
+You could say:
+
+Turns don’t necessarily begin with the average company. The LLM detects where unexpected weakness is emerging first.
+
+That is a much more differentiated product than “our blue line leads ISM.”
+
+The overall pitch
+
+I would actually stop trying to make the presentation prove:
+
+“We built a better leading indicator.”
+
+unless the evidence ultimately supports that.
+
+I’d present the level-up as:
+
+Macro data gives us the aggregate. The LLM gives us the distribution underneath it.
+
+Then:
+
+22,000+ companies → millions of statements → structured expectations → unexpected changes → sector diffusion → macro signal.
+
+That is the impressive part. You have effectively turned the earnings-call universe into a continuously updated corporate expectations survey, except you can cut it by industry, firm, topic, tail, breadth and direction.
+
+And then the regression improvement becomes the validation:
+
+“Does all this textual information actually add anything?”
+Yes. When we add it to conventional information, model performance improves.
+
+That’s an extremely clean nontechnical narrative.
 If I were allocating your research time, I’d spend much less effort now trying to manufacture the perfect blue line from the CAPEX aggregate, and much more on forecast improvement + turning points + cross-sectional diffusion + sector decomposition. That’s where the granularity of your dataset actually gives you something a normal macro strategist doesn’t already have.
       BQNT export scripts to automate dashboard publishing directly within the terminal environment.
