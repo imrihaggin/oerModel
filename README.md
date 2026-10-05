@@ -419,4 +419,190 @@ Yes. When we add it to conventional information, model performance improves.
 
 That’s an extremely clean nontechnical narrative.
 If I were allocating your research time, I’d spend much less effort now trying to manufacture the perfect blue line from the CAPEX aggregate, and much more on forecast improvement + turning points + cross-sectional diffusion + sector decomposition. That’s where the granularity of your dataset actually gives you something a normal macro strategist doesn’t already have.
-      BQNT export scripts to automate dashboard publishing directly within the terminal environment.
+      
+
+
+
+her
+Exactly. I think there are three separate hurdles, and you’ve cleared only the middle one.
+
+1. Does the LLM measure something economically real?
+Your constructed series should co-move sensibly with the official concept. A hiring-intentions index should resemble vacancies/payroll demand; pricing pressure should resemble relevant inflation measures; equipment CAPEX intentions should relate to equipment investment/orders. This is construct validity. Central-bank work does exactly this—for example, an ECB earnings-call labor-demand indicator closely tracks the euro-area vacancy rate, while Bank of Canada transcript indicators correlate with official inflation/output-gap measures and improve inflation forecasts. 
+
+2. Does it contain information the official data don’t?
+That’s where your residual/incremental regression results matter. You’ve apparently got evidence for this.
+
+3. Can we exploit that incremental information before the official data tell us?
+That’s the final blow.
+
+And I think this changes what you should search for.
+
+Don’t demand that the residual itself look like ISM
+
+Suppose your raw transcript CAPEX series tracks investment beautifully. Great—that establishes that your LLM is measuring CAPEX intentions.
+
+Then:
+
+\text{Transcript CAPEX}
+=
+\underbrace{\text{known macro component}}_{\text{tracks official data}}
++
+\underbrace{\text{corporate surprise}}_{\text{new information}}
+
+The second component doesn’t necessarily need to look like the future official series. In fact, if it did perfectly, you’d almost wonder why you bothered residualizing it.
+
+Instead, ask whether today’s surprise tells you where the conventional indicator is wrong about tomorrow.
+
+That’s a much punchier test:
+
+\boxed{
+\text{LLM surprise today}
+\rightarrow
+\text{future macro forecast error}
+}
+
+THAT could be your killer chart
+
+Imagine consensus/current macro information says manufacturing will remain flat.
+
+Your transcript signal says companies are materially more pessimistic than would normally be expected given today’s macro environment.
+
+Six months later, ISM disappoints.
+
+Instead of plotting:
+
+LLM index vs ISM
+
+plot:
+
+Transcript surprise vs subsequent macro surprise
+
+or, even better for a presentation, create buckets.
+
+Take every historical observation and sort the LLM signal into:
+
+Very negative | Negative | Neutral | Positive | Very positive
+
+Then show what subsequently happened to the relevant macro variable.
+
+Conceptually:
+
+Today’s corporate surprise	ISM next 6m
+Very negative	−6.2
+Negative	−2.8
+Neutral	+0.1
+Positive	+2.4
+Very positive	+5.1
+
+Those numbers are illustrative, obviously.
+
+If your actual data produce anything remotely monotonic like that, that’s your slide.
+
+A macro strategist understands it instantly:
+
+When companies tell us something unusually positive or negative relative to the macro backdrop, the official data subsequently move in that direction.
+
+Now you’re no longer discussing R².
+
+Even better: predict the miss, not the level
+
+This is where I would send Claude next.
+
+For each macro target, create a reasonable “what we would have expected at time t” forecast using the macro information available then.
+
+Then define:
+
+MacroSurprise_{t+h}
+=
+Actual_{t+h}
+-
+Expected_{t+h|t}.
+
+Now test:
+
+MacroSurprise_{t+h}
+=
+\alpha+\beta\,TranscriptSurprise_t+\epsilon.
+
+That’s conceptually perfect for what you’ve built.
+
+Your residual transcript score says:
+
+What are corporations saying that is unusual given everything we currently know?
+
+And your dependent variable says:
+
+What subsequently happened that we couldn’t have known from conventional macro information?
+
+Now you’re comparing new information with new information.
+
+There is related research showing that LLM-extracted managerial expectations can predict future GDP, production and employment beyond existing measures, including survey forecasts. 
+
+Then you get the strategist’s actual product
+
+Every earnings season, you produce:
+
+WHERE CORPORATES DISAGREE WITH THE MACRO DATA
+
+For example:
+
+CAPEX: +1.4σ vs macro backdrop
+Corporate investment intentions materially stronger than conventional indicators imply.
+
+Hiring: −1.1σ
+Hiring intentions weaker than current labor-market data imply.
+
+Pricing: +0.8σ
+Pricing intentions remain unusually firm despite disinflation in reported data.
+
+Demand: −0.2σ
+Broadly consistent with current macro conditions.
+
+That’s actionable information, rather than an index for the sake of an index.
+
+And you can still show the raw series next to official data:
+
+“Does the LLM understand the economy?”
+→ Yes: pricing tracks inflation, hiring tracks labor demand, CAPEX tracks investment.
+
+“Is it just repackaging existing data?”
+→ No: residualization/incremental regressions.
+
+“So what does the unique information tell us?”
+→ When the LLM disagrees with conventional macro information, subsequent macro outcomes systematically move toward the corporate signal.
+
+That’s the sequence I’d want.
+
+And then there’s an even bigger final-final blow
+
+If the above works, test economic-data surprises and rates.
+
+Not:
+
+LLM_t\rightarrow 10Y_{t+6m}.
+
+That’s messy because a thousand things determine yields.
+
+Instead:
+
+LLM\ corporate\ surprise
+\rightarrow
+\boxed{future\ macro\ data\ surprises}
+\rightarrow
+rates
+
+For example, does unusually weak transcript hiring information predict subsequent downside payroll/JOLTS surprises? Does pricing surprise predict inflation surprises? Does demand surprise predict ISM/retail/IP surprises?
+
+Then look at market pricing before those releases.
+
+If you can show that corporate transcript information systematically anticipates a subset of future economic-data surprises that were not yet priced into consensus, you’ve crossed from:
+
+“Cool LLM macro project”
+
+to
+
+“This is potentially an information advantage for a rates desk.”
+
+I’d have Claude attack exactly this hypothesis next, before building more indices. The raw-index relationship + incremental-information result you already have are the first two legs. Prediction of the subsequent miss is the missing third leg.
+
+BQNT export scripts to automate dashboard publishing directly within the terminal environment.
